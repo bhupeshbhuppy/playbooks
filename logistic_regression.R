@@ -9,6 +9,22 @@ rm(list = ls())
 # importing library -------------------------------------------------------
 library(plotly)
 library(DescTools)
+library(reshape2)
+
+
+# user defined functions --------------------------------------------------
+
+woe<-function(dep,indep){
+  woe<-dcast(as.data.frame(table(indep,dep)),indep~dep)
+  woe$total<-rowSums(woe[,c(2,3)])
+  woe$DB<-woe$`0`/length(indep)
+  woe$DG<-woe$`1`/length(indep)  
+  woe$WoE<-log(woe$DG/woe$DB)
+  woe$DG_DB<-woe$DG - woe$DB
+  iv<-sum(woe$DG_DB*woe$WoE)
+  return(list("woe" = woe,"iv"=iv))
+}
+
 
 # import dependent and independent variable -------------------------------
 
@@ -46,12 +62,14 @@ if(length(model)>0){
   #########################################################################################################
   plt<-list()
   for(i in 1:length(indep)){
+    j=1
     if(class(indep[,i]) == "integer" || class(indep[,i]) == "factor" || class(indep[,i]) == "character"){
       data_freq<-as.data.frame(table(indep[,i],dep)/(as.data.frame(table(indep[,i]))[,2]))
       p<-plot_ly(data_freq, x = ~Var1, y = ~Freq, color = ~dep, type="bar")%>%
         layout(title = paste0("Event Rate Chart- ",colnames(indep)[i]),
                xaxis = list(title = colnames(indep)[i],showgrid = T))
-      plt[[i]]<-p
+      plt[[j]]<-p
+      j=j+1
     }
   }
   plt
@@ -68,12 +86,39 @@ if(length(model)>0){
   for(i in 1: length(indep)){
     somersD[i,2]<-SomersDelta(dep,indep[,i])
   }
+  somersD
+  ks<-c()
+  #### KS = 1 is not from the same sample i.e. not a good predictors
+  for(i in 1: length(indep)){
+    if(class(indep[,i]) == "numeric" || class(indep[,i]) == "double"){
+      ks<-as.data.frame(rbind(ks,data.frame(var= colnames(indep)[i], "DStat"= ks.test(model$fitted.values,indep[,i])$statistic[[1]])))
+    }
+  }
+  ks
   
+  
+  #########################################################################################################
+  ####                    c. Weight of Evidence (WoE) and Information Value                           #####
+  #### Measures the strength of a set of binning across different values of the predictor variables   ##### 
+  #### to seprate good and bad. High negative or positive values are an indication of the variables   #####
+  ####                                                                                                #####
+  #### Information Value:Asses overall power of a variable in assessing good and bad outcomes         #####
+  #### Rule of Thumb: < 0.02	useless for prediction; 0.02 to 0.1	Weak predictor;                     #####
+  ####                0.1 to 0.3	Medium predictor; 0.3 to 0.5	Strong predictor                      #####
+  ####                >0.5	Suspicious or too good to be true                                         #####
+  #########################################################################################################
+  woe_iv<-list()
+  for(i in 1:length(indep)){
+    j<-1
+    if(class(indep[,i]) == "integer" || class(indep[,i]) == "factor" || class(indep[,i]) == "character"){
+      woe_iv[[j]]<-woe(dep,indep[,i])
+      j=j+1
+    }
+  }
   
 }else{
   print("Please create or import the model")
 }
-
 
 
 
