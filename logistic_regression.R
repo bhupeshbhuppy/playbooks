@@ -10,7 +10,7 @@ rm(list = ls())
 library(plotly)
 library(DescTools)
 library(reshape2)
-
+library(perturb)
 
 # user defined functions --------------------------------------------------
 
@@ -25,6 +25,9 @@ woe<-function(dep,indep){
   return(list("woe" = woe,"iv"=iv))
 }
 
+dropOutSwitchTest<-function(){
+  #### To be filled after we have written discriminitrary power and predictive power testing
+}
 
 # import dependent and independent variable -------------------------------
 
@@ -115,7 +118,49 @@ if(length(model)>0){
       j=j+1
     }
   }
+  #########################################################################################################
+  ####                                    c. Dropout switch test                                      #####
+  #########################################################################################################
   
+  
+  # 2. Multicollinearity -------------------------------------------
+  
+  #########################################################################################################
+  ####                                    a. Correlation Assesment                                    #####
+  #########################################################################################################
+  
+  
+  #########################################################################################################
+  ####                                    b. Coondition Index                                         #####
+  ####  The largest conditional index in the conditional number. A large condition number indicates   #####
+  ####  that the regression estimates may have considerable error due to multicollinearity.           #####
+  ####  CI greater than 30 can be cause of concern and shoud be evaluated carefully.                  #####
+  ####  https://academic.csuohio.edu/kneuendorf/c63113/hand26A.pdf                                    #####
+  #########################################################################################################
+  colldiag(model)
+  
+  #########################################################################################################
+  ####                                    b. VIF (1/(1-R^2))                                          #####
+  ####  VIF needs to be calculated for all the variables. Some high VIF are acceptable, especially    #####
+  ####  those which can be proven to be important via the dropout test. FOr categorical variable      #####
+  ####  VIF is calculated by using partial genealized R^2. Generaly VIF above 5 is regarded as bad    #####
+  #########################################################################################################
+  VIF(model)
+  
+  #########################################################################################################
+  ####                                    c. Variable Dropout Test                                    #####
+  ####  Removing one variable at a time and thenn assessing the VIF. Testing the reduced model by     #####
+  ####  comparing the model performance with that of the original model. If possible the test should  #####
+  ####  be performed with out of sample data                                                          #####
+  #########################################################################################################
+  if(length(indep)>2){
+    for(i in 1: length(indep)){
+      temp_model<-glm(glm(dep~., modelling_data[,-c(i+1)],family=binomial(link = "logit")))
+      print(paste("After reoving the ",i,"th varible the model VIF is", VIF(temp_model)))
+      
+      #### Need to check the PM after they are all writen
+    }
+  }
 }else{
   print("Please create or import the model")
 }
